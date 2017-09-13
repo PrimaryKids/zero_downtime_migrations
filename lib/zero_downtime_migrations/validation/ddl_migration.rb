@@ -16,6 +16,8 @@ module ZeroDowntimeMigrations
           All other types of migrations should keep the DDL transaction enabled so
           that changes can be rolled back if any unexpected errors occur.
 
+          This will also fire on index changes unless it sees an 'add_index' call in the change def.
+
           Any other data or schema changes must live in their own migration files with
           the DDL transaction enabled just in case they need to be rolled back.
 

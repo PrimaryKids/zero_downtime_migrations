@@ -2,7 +2,7 @@ module ZeroDowntimeMigrations
   class Validation
     class AddIndex < Validation
       def validate!
-        return if concurrent? && migration.ddl_disabled?
+        return if primary_index_migration? || (concurrent? && migration.ddl_disabled?)
         error!(message)
       end
 
@@ -15,29 +15,17 @@ module ZeroDowntimeMigrations
           This action can lock your database table while indexing existing data!
 
           Instead, let's add the index concurrently in its own migration with
-          the DDL transaction disabled.
+          the DDL transaction disabled. We can do this by inheriting Primary::IndexMigration.
 
-          This allows PostgreSQL to build the index without locking in a way
-          that prevent concurrent inserts, updates, or deletes on the table.
-          Standard indexes lock out writes (but not reads) on the table.
+          Your migration can be generated using this command:
 
-            class Index#{table_title}On#{column_title} < ActiveRecord::Migration
-              disable_ddl_transaction!
+            ./bin/rails generate primary_index_migration <Migration_Class_Name_Here>
 
-              def change
-                add_index :#{table}, #{column.inspect}, algorithm: :concurrently
-              end
-            end
-
-          If you're 100% positive that this migration is already safe, then wrap the
-          call to `add_index` in a `safety_assured` block.
-
-            class Index#{table_title}On#{column_title} < ActiveRecord::Migration
-              def change
-                safety_assured { add_index :#{table}, #{column.inspect} }
-              end
-            end
         MESSAGE
+      end
+
+      def primary_index_migration?
+        migration.class.superclass.name == 'Primary::IndexMigration'
       end
 
       def concurrent?
